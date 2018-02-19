@@ -1,15 +1,13 @@
+
+Battlefield Heroes FESL server protocol guide
+This document provides a technical specification for the protocols that are used to communicate between the master server and the game client, and the master server and the game server.
+
+Document version
+Because this protocol is proprietary, not all details are available yet. This document may be updated as more details are reverse-engineered, mistakes are corrected, or ambiguities are clarified. If you have any improvements you can make to this document, please send a pull request at https://github.com/M0THERB0ARD/BFH-Master-Protocol
+=====================================================================================================================================================
 # Battlefield Heroes master server protocol specification
 
-This document provides a technical specification for the protocols that are used to communicate between the master server and the game client, and the master server and the game server. 
-
-## Document version
-
-Because this protocol is proprietary, not all details are available yet. This document may be updated as more details are reverse-engineered, mistakes are corrected, or ambiguities are clarified.
-If you have any improvements you can make to this document, please send a pull request at https://github.com/M0THERB0ARD/BFH-Master-Protocol
-
-|Version |Date      |Note           |
-|--------|----------|---------------|
-|1.0     |2017-11-04|Initial version|
+This provides a better info about the Backend or FESL . Between the Master server , Fesl Server and Theather Server
 
 ## General infrastructure overview
 
@@ -29,20 +27,7 @@ The master server has 3 main components:
 3. Two Theater servers: a message based protocol server that handles querying, joining, leaving, ... of game servers and clients
 
 A game client will first connect to the FESL server, then the HTTP server, then the Theater server and finally the game server.
-
-## Intermission: getting the game and server to start
-
-In order to test and debug an implementation of the master server protocol, a working copy of the game client and server is required. Starting the game client can be done from command line with the following arguments:
-
-`bfheroes.exe +sessionId ASessionIdAcceptedByTheServer +magma 0 +punkbuster 0 +developer 1`
-
-The game server can be started using the following arguments:
-
-`BFHeroes_w32ded.exe +key KeyToStartServer +eaAccountName TheAccountUsername +eaAccountPassword TheAccountPassword +soldierName TheServerName`
-
-Whether or not the values for these arguments are valid depends on the implementation of the master server.
-If the game server interface has the text "Online" at the top, it has successfully connected to the master server.
-For more information, see the FESL chapter.
+-> game server  = BFHeroes_w32ded.exe
 
 ## FESL
 
@@ -55,6 +40,7 @@ Known offsets of the FESL server address are:
 |--------------|------------|-----------|
 |1.46.222034.0 |Game client |0x00951EA4 |
 |1.42.217478.0 |Game server |0x0067329B |
+##this is not so important since you can connect any .exe that uses Magma(see fesl patch)
 
 The default value is "bfwest-server.fesl.ea.com".
 The default port is 18270 for the game client and 18051 for the game server.
@@ -62,9 +48,6 @@ The default port is 18270 for the game client and 18051 for the game server.
 Communication over this connection is encrypted using TLS. By default, the game client/server checks the FESL server TLS certificate and disconnects if it does not match a preset EA certificate.
 This check can be disabled using a patch to executable. (See Appendix: "FESL certificate patch")
 After the patch, the game client/server will accept more but not all certificates.
-The following OpenSSL command generates certificates and key files that are accepted by a patched game client/server:
-
-`openssl.exe req -x509 -nodes -newkey rsa:1024 -keyout key.pem -out cert.pem -days 365 -sha1 -subj /C=US`
 
 During the TLS handshake, both parties agree on a cipher suite and SSL version. Known good values for these are TLS_RSA_WITH_RC4_128_SHA and SSL 3.0 respectively.
 
@@ -96,15 +79,15 @@ This is the first packet that is sent when a FESL connection is made.
 
 |Key                       |Example value              |Note                           |
 |--------------------------|---------------------------|-------------------------------|
-|SDKVersion                |5.0.0.0.0                  |                               |
+|SDKVersion                |5.0.0.0.0                  |magma sdk                      |
 |clientPlatform            |PC                         |                               |
 |clientString              |bfwest-pc                  |                               |
-|clientType                |server                     |                               |
+|clientType                |server                     |server.exe                     |
 |clientVersion             |1.46.222034                |                               |
 |locale                    |en_US                      |                               |
 |sku                       |125170                     |                               |
 |protocolVersion           |2.0                        |                               |
-|fragmentSize              |8096                       |                               |
+|fragmentSize              |8096                       |max buffer size                |
 
 #### TXN = Hello, FESL server => game client/server
 
@@ -116,7 +99,7 @@ This is the first packet that is sent when a FESL connection is made.
 |curTime                   |Nov-02-2017 22:29:00 UTC   |                                                 |
 |activityTimeoutSecs       |3600                       |                                                 |
 |messengerIp               |messaging.ea.com           |This server is not required to play the game.    |
-|messengerPort             |13505                      |                                                 |
+|messengerPort             |13505                      |this was used by EA in the past                  |
 |theaterIp                 |bfwest-pc.theater.ea.com   |                                                 |
 |theaterPort               |18056                      |By default, 18056 is for game servers and        |
 |                          |                           |18275 for game clients                           |
@@ -200,10 +183,10 @@ This message retrieves general account information, based on the parameters sent
 |nuid                      |email@account.com          |                               |
 |DOBDay                    |1                          |Date Of Birth                  |
 |DOBMonth                  |1                          |                               |
-|DOBYear                   |2017                       |                               |
+|DOBYear                   |1992                       |                               |
 |userId                    |1                          |                               |
-|globalOptin               |0                          |                               |
-|thidPartyOptin            |0                          |                               |
+|globalOptin               |0                          |always 0                       |
+|thidPartyOptin            |0                          |always 0                       |
 |language                  |enUS                       |                               |
 |country                   |US                         |                               |
 
@@ -305,11 +288,11 @@ This message is a query for a list of endpoints to test for the lowest latency o
 
 |Key                       |Example value              |Note                           |
 |--------------------------|---------------------------|-------------------------------|
-|minPingSitesToPing        |2                          |                               |
-|pingSites.*i*.addr        |45.77.66.233               |                               |
-|pingSites.*i*.name        |gva                        |                               |
-|pingSites.*i*.type        |0                          |                               |
-|pingSites.[]              |4                          |                               |
+|minPingSitesToPing        |1                          |this was used in the past tho  |
+|pingSites.*i*.addr        |8.8.8.8                    |it doesnt seem to work. check  | 
+|pingSites.*i*.name        |iad                        | valid response ?              |
+|pingSites.*i*.type        |0                          | or it's just telemetric shit  |
+|pingSites.[]              |1                          |                               |
 
 
 #### TXN = UpdateStats, game client/server => FESL server
@@ -349,7 +332,7 @@ Returns a unique token for game telemetry.
 |                          |                           |                               |
 
 #### TXN = GetTelemetryToken, FESL server => game client/server
-
+#### only requested in 2009 client
 |Key                       |Example value              |Note                           |
 |--------------------------|---------------------------|-------------------------------|
 |telemetryToken            |MTU5LjE1My4yMzUuMjYsOTk0Nix|                               |
@@ -550,86 +533,7 @@ A seperate set of network sockets is made for the game servers and the game clie
 Theater connections are mostly in plaintext.
 The Theater network address and port is received by the game server/client through the FESL Hello message.
 
-Packets received or sent from the UDP port are decoded/encoded using the "gamespy XOR". (See Appendix)
-
-
-## Appendix
-
-### FESL certificate patch
-
-Source: http://aluigi.altervista.org/patches/fesl.lpatch
-
-```
-====================================================================================
-#
-# this file has been created for the Lame patcher program available for both *nix
-# and Windows platforms.
-# You need this program for continuing the patching of your files:
-#
-#   http://aluigi.org/mytoolz.htm#lpatch
-#
-# Quick step-by-step for Windows:
-# - launch lpatch.exe
-# - select this fesl.lpatch file
-# - read the message windows and click yes
-# - select the file (usually executables or dlls) to patch
-# - read the message windows to know if everything has been patched correctly
-
-TITLE
-    EA games fesl.ea.com certificate verification remover 0.2
-    by Luigi Auriemma
-    e-mail: aluigi@autistici.org
-    web:    aluigi.org
-
-INTRO
-    this modification removes the verification of the SSL certificate
-    sent by the *.fesl.ea.com server (ports 18240,18020,18120,18081,
-    18125,18270,18060,18210,18310 and others) when an EA game logins
-    on it.
-    this login mechanism is used with clients and servers so this
-    remover is intended to both.
-    .
-    the result of such modification is that the game will not longer
-    drop the connection if the fesl server certificate is invalid so
-    the users can build their own "fesl" server for LAN gaming and
-    other possible things like understanding the protocol (fsys, acct,
-    TXN, ... very simple, use stcppipe -S for dumping the whole
-    decrypted connection).
-    .
-    some games that use fesl are Battlefield 2142 / Heroes,
-    Command & Conquer 3, The Lord of the Rings, Medal of Honor Airborne,
-    NASCAR, Need for Speed Carbon / Undercover, Mercenaries 2, Dragon
-    Age and many others.
-    .
-    note that the executable must be NOT encrypted or compressed (that
-    happens when are used CD protections).
-
-FILE
-    *.exe
-
-MAX_CHANGES
-    1
-
-
-BYTES_ORIGINAL
-    81 ?? EE 0F 00 00   ; AND ECX,0FEE
-    83 ?? 15            ; ADD ECX,15
-    8B ??               ; MOV EAX,ECX
-
-BYTES_PATCH
-    ?? ?? ?? ?? ?? ??
-    B8 15 00 00 00      ; MOV EAX, 15
-
-
-BYTES_ORIGINAL
-    B8 03 10 00 00      ; MOV EAX,1003
-    5D                  ; POP EBP
-
-BYTES_PATCH
-    B8 15 00 00 00      ; MOV EAX, 15
-
-====================================================================================
-```
+Packets received or sent from the UDP port are decoded/encoded using the "gamespy XOR"
 
 ### Generating a BF2Random
 
@@ -639,78 +543,11 @@ A BF2Random of length `n` consists of `n` characters chosen randomly from the fo
 ### Performing a "gamespy XOR"
 
 Given a string with n characters, the string is encoded as follows:
-```
+
 string encode(inputstring):
     m = length of "gameSpy"
 	for i = 0 to n
 		inputchar = inputstring[i]
 		xorChar = "gameSpy"[i mod m]
 		outputchar[i] = inputchar XOR xorChar
-```
-
-### Game server arguments
-
-Obtained using `BFHeroes_w32ded.exe +?`. Some of these are remnants of Battlefield 2/2142 and may not be functional.
-
-```
-Usage: BFHeroes.exe <options> 
-
-Available options are: 
-+dedicated - Start in dedicated server mode 
-+multi - Allow starting multiple BF2 instances 
-+joinServer - Join a server by ip address or hostname 
-+playerName - Set the player name 
-+password - Set the server password when joining a server 
-+config - Sets path to the ServerSettings.con file to use 
-+mapList - Sets the path to the MapList.con file to use 
-+lowPriority - Run the game with slightly lower priority 
-+loadLevel - Set the level to load 
-+fullscreen - Start game in full screen mode 
-+noSound - Start game without sound 
-+demo - Sets the con-file with demo options 
-+maxPlayers - Sets max players. 
-+gameMode - Sets the game mode. 
-+modPath - Set the mod path (default mods/bfheroes) 
-+showAsserts - Show non-content asserts 
-+showContentAsserts - Show content asserts 
-+help - Displays this help 
-+? - Same as +help 
-+ranked - Allows stats submission to backend servers 
-+overlayPath - Start game with a custom path for configuration files 
-+port - specifies the network port to be used 
-+pbPath - Set the path to use for PunkBuster on multi-instance configurations (defaults to (install_dir)/pb 
-+eaEncyptedLogin - Encyrpted login used to connect to the EA backend 
-+soldierName - Auto-login to a soldier in the specified EA Account Name 
-+sessionld - Magma session identifier 
-+dataCenters - prioritized list of data centers, showing the order in which the client should connect to data centers
-+webBrowser - Enable or disable the embedded web browser component 
-+magmaEnvironment - Sets the magma environment to use 
-+plasmaEnvironment - Sets the plasma environment to use 
-+lang - Sets the language to use 
-+dc - Toggles data collection 
-+eaAccountName - Auto-login with the specified EA Account Name 
-+eaAccountPassword - Password to the specified EA Account Name 
-+key - Server API Key for Magma 
-+guid - Server GUID 
-+secret - Secret which is associated with the server GUID 
-+useServerMonitorTool - Use the server monitor tool 
-+serverMonitorAddress - Server monitor tool address 
-+serverMonitorPort - Server monitor tool port 
-+checkEntitlement - Perform an entitlement check at login/connection (used for beta) 
-+magma - Use Magma backend 
-+magmaProtocol - Select HTTP or HTTPS protocol for hydra/Magma requests 
-+plasmaFindListOfServers - Search for a list of servers (as opposed to just one). 
-+plasmaServerName - Specify a server name to filter for during playnow 
-+plasmaClientPort - Specify a port for the plasma client to use for game data 
-+autoLogin - Automatically login at application start, before reaching the frontend 
-+survey - Launches survey at regular intervals after game shuts down. 
-+webSiteHostName - Specify which website the game is launched from. 
-+battleFundsHostName - Specify which website to buy battlefunds from.
-
-Advanced options: 
-+hostServer 
-+ai 
-+provider 
-+region 
-+type 
 ```
